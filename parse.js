@@ -1655,11 +1655,16 @@ var O = class a {
       this.tokenizer.del !== _.prototype.del
         ? this.#n(e)
         : e;
-    Ae(this.tokenizer, n);
+    // The scan for delimiter closers is only read by emStrong/del, which
+    // only run when the text starts with "*", "_" or "~"; without any of
+    // those in the masked text the scan is wasted work. ze/Me fall back to
+    // scanning on demand if the cache is empty, so skipping is safe.
+    const hasDelims = n.includes("*") || n.includes("_") || n.includes("~");
+    hasDelims && Ae(this.tokenizer, n);
     try {
       return this.#t(e, n, t);
     } finally {
-      Ee(this.tokenizer);
+      hasDelims && Ee(this.tokenizer);
     }
   }
   #t(e, t, n) {
@@ -1800,13 +1805,29 @@ var O = class a {
       t = t.replace(n, s);
     }
     return (
-      (t = t.replace(this.tokenizer.rules.inline.anyPunctuationOutsideCode, (n, s, r) =>
-        r ? "+".repeat(n.length) : s ? s + n.slice(s.length, -s.length).replace(/`/g, "+") + s : n,
-      )),
-      (t = t.replace(this.tokenizer.rules.inline.blockSkip, (n, s, r) => {
-        let o = r ? r.length : 0;
-        return n.slice(0, o) + "[" + "a".repeat(n.length - o - 2) + "]";
-      })),
+      // anyPunctuationOutsideCode can only match at a backtick (a code span)
+      // or a backslash (an escaped punctuation mark); without either the
+      // replace is a no-op.
+      (t =
+        t.includes("`") || t.includes("\\")
+          ? t.replace(
+              this.tokenizer.rules.inline.anyPunctuationOutsideCode,
+              (n, s, r) =>
+                r
+                  ? "+".repeat(n.length)
+                  : s
+                    ? s + n.slice(s.length, -s.length).replace(/`/g, "+") + s
+                    : n,
+            )
+          : t),
+      // blockSkip can only match a link "[", a code span "`" or html "<".
+      (t =
+        t.includes("[") || t.includes("`") || t.includes("<")
+          ? t.replace(this.tokenizer.rules.inline.blockSkip, (n, s, r) => {
+              let o = r ? r.length : 0;
+              return n.slice(0, o) + "[" + "a".repeat(n.length - o - 2) + "]";
+            })
+          : t),
       (t = this.options.hooks?.emStrongMask?.call({ lexer: this }, t) ?? t),
       t
     );
