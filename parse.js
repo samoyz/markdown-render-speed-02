@@ -512,7 +512,8 @@ function P(a, e) {
   return a;
 }
 function Ie(a) {
-  return T.numericCharacterReference.test(a)
+  // numericCharacterReference can only match at "&#".
+  return a.includes("&#") && T.numericCharacterReference.test(a)
     ? a.replace(T.numericCharacterReferenceOrAmpersand, (e, t, n) => {
         if (t === void 0 && n === void 0) return "&amp;";
         let s = t === void 0 ? Number.parseInt(n, 16) : Number.parseInt(t, 10);
@@ -526,7 +527,8 @@ function Ie(a) {
 }
 function he(a) {
   try {
-    a = encodeURI(a).replace(T.percentDecode, "%");
+    // encodeURI only produces "%25" from a literal "%" in the input.
+    a = a.includes("%") ? encodeURI(a).replace(T.percentDecode, "%") : encodeURI(a);
   } catch {
     return null;
   }
