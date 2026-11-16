@@ -711,36 +711,6 @@ function isUrlStartChar(c) {
     c === 45 // -
   );
 }
-
-/** The table block regex needs a delimiter row as the second line: after at
- * most three spaces, an optional "|", spaces, an optional ":" and then "-".
- * If that is not there the regex cannot match. */
-function maybeTable(e) {
-  const nl = e.indexOf("\n");
-  if (nl < 0) return false;
-  // The header line must hold a non-space character.
-  let i = 0;
-  while (i < nl && e.charCodeAt(i) === 32) i++;
-  if (i >= nl) return false;
-  // The delimiter line.
-  let j = nl + 1;
-  let sp = 0;
-  while (e.charCodeAt(j) === 32 && sp < 3) {
-    j++;
-    sp++;
-  }
-  if (e.charCodeAt(j) === 124) {
-    j++;
-    while (e.charCodeAt(j) === 32) j++;
-  }
-  if (e.charCodeAt(j) === 58) j++;
-  return e.charCodeAt(j) === 45;
-}
-
-/** The setext-heading block regex needs an underline line ("===" or "---",
- * alone on its line) somewhere after the first line; without one it cannot
- * match. */
-const setextUnderline = /\n {0,3}(=+|-+)[ \t]*(?:\n|$)/;
 var _ = class {
   options;
   rules;
@@ -1129,7 +1099,6 @@ ${f}`)
     }
   }
   table(e) {
-    if (!maybeTable(e)) return;
     let t = this.rules.block.table.exec(e);
     if (!t || !this.rules.other.tableDelimiter.test(t[2])) return;
     let n = de(t[1]),
@@ -1178,7 +1147,6 @@ ${f}`)
     }
   }
   lheading(e) {
-    if (!setextUnderline.test(e)) return;
     let t = this.rules.block.lheading.exec(e);
     if (t) {
       let n = t[1].trim();
