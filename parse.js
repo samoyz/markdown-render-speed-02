@@ -1664,7 +1664,27 @@ var O = class a {
             t.push(r));
         continue;
       }
-      if ((r = this.tokenizer.table(e))) {
+      // table needs its delimiter on the second line, whose first
+      // non-space character (within 3 spaces) is |, : or -; otherwise it
+      // cannot match, so skip its regex. (lheading is NOT gated here:
+      // its subject can span several lines, so its underline may sit on
+      // a later line.)
+      let tableOk = !1;
+      {
+        const nl = e.indexOf(`
+`);
+        if (nl >= 0) {
+          let j = nl + 1,
+            sp = 0;
+          while (sp < 3 && e.charCodeAt(j) === 32) {
+            j++;
+            sp++;
+          }
+          const c2 = e.charCodeAt(j);
+          tableOk = c2 === 124 || c2 === 58 || c2 === 45;
+        }
+      }
+      if (tableOk && (r = this.tokenizer.table(e))) {
         ((e = e.substring(r.raw.length)), t.push(r));
         continue;
       }
