@@ -559,15 +559,41 @@ function L(a, e, t) {
   }
   return a.slice(0, n - s);
 }
+/**
+ * `a` with its trailing blank lines removed when there are two or more of
+ * them (what the split/join version does), found by scanning back from the
+ * end instead of splitting the whole block into lines.
+ */
 function ge(a) {
-  let e = a.split(`
-`),
-    t = e.length - 1;
-  for (; t >= 0 && T.blankLine.test(e[t]);) t--;
-  return e.length - t <= 2
-    ? a
-    : e.slice(0, t + 1).join(`
-`);
+  let i = a.length - 1,
+    blanks = 0,
+    hasContent = false,
+    nlAfter = a.length,
+    cut = a.length;
+  while (i >= 0) {
+    const c = a.charCodeAt(i);
+    if (c === 10) {
+      if (hasContent) {
+        cut = nlAfter;
+        break;
+      }
+      blanks++;
+      nlAfter = i;
+      hasContent = false;
+    } else if (c !== 32 && c !== 9) {
+      hasContent = true;
+    }
+    i--;
+  }
+  if (i < 0) {
+    if (!hasContent) {
+      blanks++;
+      cut = 0;
+    } else {
+      cut = nlAfter;
+    }
+  }
+  return blanks <= 1 ? a : a.slice(0, cut);
 }
 function F(a) {
   return a.trim().replace(T.multipleSpaceGlobal, " ").toLowerCase().toUpperCase().toLowerCase();
