@@ -582,29 +582,19 @@ function ke(a, e) {
   return t > 0 ? -2 : -1;
 }
 var N = new WeakMap();
+/** Runs of emphasis/deletion delimiters: one match per maximal run. */
+const delimRun = /([*_~])\1*/g;
 function fe(a) {
   let e = { "*": -1, _: -1 },
-    t = -1,
-    n = a.length;
-  for (let s = 0; s < n; s++) {
-    let r = a[s];
-    if (r !== "*" && r !== "_" && r !== "~") continue;
-    let o =
-        s === 0
-          ? `
-`
-          : a[s - 1],
-      i = s + 1;
-    for (; i < n && a[i] === r;) i++;
-    (o !== " " &&
-      o !== "	" &&
-      o !==
-        `
-` &&
-      o !== "\r" &&
-      o !== "\f" &&
-      (r === "~" ? (t = s) : (e[r] = s)),
-      (s = i - 1));
+    t = -1;
+  delimRun.lastIndex = 0;
+  let m;
+  while ((m = delimRun.exec(a)) !== null) {
+    const s = m.index,
+      r = m[1],
+      o = s === 0 ? "\n" : a[s - 1];
+    if (o !== " " && o !== "	" && o !== "\n" && o !== "\r" && o !== "\f")
+      r === "~" ? (t = s) : (e[r] = s);
   }
   return { maskedSrc: a, lastPossibleEmStrongCloserIndex: e, lastPossibleDelCloserIndex: t };
 }
