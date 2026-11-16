@@ -869,6 +869,20 @@ function firstNonSpace(s) {
   for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) !== 32) return i;
   return -1;
 }
+/**
+ * Does `s` end with a newline, spaces/tabs, a newline, spaces/tabs (the
+ * doubleBlankLine regex /\n[ \t]*\n[ \t]*$/), found by scanning back
+ * from the end instead of running the regex over the whole item.
+ */
+function endsDoubleBlank(s) {
+  let i = s.length;
+  while (i > 0 && (s.charCodeAt(i - 1) === 32 || s.charCodeAt(i - 1) === 9)) i--;
+  if (i === 0 || s.charCodeAt(i - 1) !== 10) return false;
+  i--;
+  while (i > 0 && (s.charCodeAt(i - 1) === 32 || s.charCodeAt(i - 1) === 9)) i--;
+  if (i === 0 || s.charCodeAt(i - 1) !== 10) return false;
+  return true;
+}
 
 /**
  * `s` with the tabs in its leading whitespace expanded (what
@@ -1199,7 +1213,7 @@ ${f}`)
           }
         }
         let A = n.slice(k, s());
-        (i.loose || (p ? (i.loose = !0) : this.rules.other.doubleBlankLine.test(A) && (p = !0)),
+        (i.loose || (p ? (i.loose = !0) : endsDoubleBlank(A) && (p = !0)),
           i.items.push({
             type: "list_item",
             raw: A,
