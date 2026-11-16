@@ -540,6 +540,92 @@ function he(a) {
  * `e` cells, and trim each cell, turning "\|" into "|": the same split the
  * replace+split version computes, in one scan.
  */
+/**
+ * Length of the text run the GFM inline-text regex matches at the start of
+ * `s`, or -1 when a rare stop may occur before the next special character,
+ * in which case the caller falls back to the regex. The combined regex
+ * finds the leftmost special character or rare-stop trigger past the
+ * first unit (a backtick or tilde run, else one character). Note the
+ * original stops at bare "http"/"https" (marked's regex build leaves the
+ * "://" bound to the "ftp" alternative only), and an email can start
+ * before a special character that sits inside its local part (backtick,
+ * "*", "~", "_" and "!" are email characters), so a special character
+ * first still needs the email-start check below.
+ */
+const textStop =
+  /[\\<!\[`*~_]|https?|ftp:\/\/|www\.|mailto:|xmpp:|@| {2,}\n/gi;
+function isEmailCharCode(c) {
+  return (
+    (c >= 48 && c <= 57) ||
+    (c >= 65 && c <= 90) ||
+    (c >= 97 && c <= 122) ||
+    c === 46 ||
+    c === 33 ||
+    c === 35 ||
+    c === 36 ||
+    c === 37 ||
+    c === 38 ||
+    c === 39 ||
+    c === 42 ||
+    c === 43 ||
+    c === 47 ||
+    c === 61 ||
+    c === 63 ||
+    c === 95 ||
+    c === 96 ||
+    c === 123 ||
+    c === 124 ||
+    c === 125 ||
+    c === 126 ||
+    c === 45
+  );
+}
+function textEnd(s) {
+  if (s.length === 0) return -1;
+  let u = 1;
+  const c0 = s.charCodeAt(0);
+  if (c0 === 96) {
+    while (u < s.length && s.charCodeAt(u) === 96) u++;
+  } else if (c0 === 126) {
+    while (u < s.length && s.charCodeAt(u) === 126) u++;
+  }
+  textStop.lastIndex = u;
+  const m = textStop.exec(s);
+  if (!m) return s.length;
+  if (m[0].length !== 1) return -1;
+  const c = m[0].charCodeAt(0);
+  if (
+    c !== 92 &&
+    c !== 60 &&
+    c !== 33 &&
+    c !== 91 &&
+    c !== 96 &&
+    c !== 42 &&
+    c !== 126 &&
+    c !== 95
+  )
+    return -1;
+  const sp = m.index;
+  // An email may start before sp even though its "@" is at or after sp
+  // (the combined regex found no "@" before sp, or it would have matched
+  // it first). For each "@", walk back over email characters to the run's
+  // start; the email starts there when that is at or after u, or at u
+  // when u lies inside the run (the lookahead after the first unit needs
+  // no non-email character before it).
+  let q = s.indexOf("@", u);
+  while (q !== -1) {
+    let e = q;
+    while (e > 0 && isEmailCharCode(s.charCodeAt(e - 1))) e--;
+    let estart = -1;
+    if (e < q) {
+      if (e >= u) estart = e;
+      else if (u <= q - 1) estart = u;
+    }
+    if (estart !== -1 && estart < sp) return -1;
+    q = s.indexOf("@", q + 1);
+  }
+  return sp;
+}
 function de(a, e) {
   const n = [];
   let start = 0,
@@ -1522,6 +1608,16 @@ ${f}`)
     }
   }
   inlineText(e) {
+    // Fast path: textEnd finds the run's end with one cheap scan when no
+    // rare stop (protocol, www., mailto:/xmpp:, email, hard break) can
+    // occur before the next special character; otherwise fall back to
+    // the full text regex, which decides those cases.
+    const len = textEnd(e);
+    if (len >= 0) {
+      const raw = e.slice(0, len);
+      let n = this.lexer.state.inRawBlock;
+      return { type: "text", raw, text: n ? raw : Ie(raw), escaped: n };
+    }
     let t = this.rules.inline.text.exec(e);
     if (t) {
       let n = this.lexer.state.inRawBlock;
