@@ -688,6 +688,43 @@ function Be(a, e, t, n) {
   }
   return !1;
 }
+/** Number of Unicode code points in `s` (what [...s].length counts), without
+ * allocating the array. Surrogate pairs count once; lone surrogates once. */
+function codePointLength(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) i++;
+    }
+    n++;
+  }
+  return n;
+}
+
+/** UTF-16 length of the first code point of `s` (what [...s][0].length is). */
+function firstCodePointLength(s) {
+  if (s.length === 0) return 0;
+  const c = s.charCodeAt(0);
+  if (c >= 0xd800 && c <= 0xdbff && s.length > 1) {
+    const d = s.charCodeAt(1);
+    if (d >= 0xdc00 && d <= 0xdfff) return 2;
+  }
+  return 1;
+}
+
+/** Last code point of `s` (what [...s].at(-1) is), or "" for an empty string. */
+function lastCodePoint(s) {
+  if (!s) return "";
+  const lo = s.charCodeAt(s.length - 1);
+  if (lo >= 0xdc00 && lo <= 0xdfff && s.length > 1) {
+    const hi = s.charCodeAt(s.length - 2);
+    if (hi >= 0xd800 && hi <= 0xdbff) return s.slice(-2);
+  }
+  return s.charAt(s.length - 1);
+}
+
 /** First code unit of a string the GFM url tokenizer could match at: a
  * letter (mailto:, xmpp:, http://, www.) or an email local-part start. */
 function isUrlStartChar(c) {
@@ -1264,14 +1301,14 @@ ${f}`)
       i = t.length - e.length,
       l = i;
     for (; !this.options.pedantic && l > 0 && t[l - 1] === r;) l--;
-    let p = [...t.slice(Math.max(0, l - 2), l)].at(-1) ?? "",
+    let p = lastCodePoint(t.slice(Math.max(0, l - 2), l)),
       h = p === "*" || p === "_" || !!this.rules.inline.punctuation.exec(p);
     l < i && (n = p);
     let u = l < i ? h : !!this.rules.inline.punctuation.exec(n);
     if (s[4] && n.match(this.rules.other.unicodeAlphaNumeric)) return;
     let d = s[1] || s[3] || "";
     if (!d || !n || u) {
-      let k = [...s[0]].length - 1,
+      let k = codePointLength(s[0]) - 1,
         g,
         b,
         m = k,
@@ -1287,7 +1324,7 @@ ${f}`)
       let ee = v - Q;
       for (A.lastIndex = 0; (s = A.exec(t)) !== null && !(s.index > ee);) {
         if (((g = s[1] || s[2] || s[3] || s[4] || s[5] || s[6]), !g)) continue;
-        if (((b = [...g].length), s[3] || s[4])) {
+        if (((b = g.length), s[3] || s[4])) {
           m += b;
           continue;
         } else if (s[5] || s[6] || R) {
@@ -1299,7 +1336,7 @@ ${f}`)
         }
         if (((m -= b), m > 0)) continue;
         b = Math.min(b, b + m + f);
-        let te = [...s[0]][0].length,
+        let te = firstCodePointLength(s[0]),
           M = e.slice(0, k + s.index + te + b);
         if (Math.min(k, b) % 2) {
           let U = M.slice(1, -1);
@@ -1330,7 +1367,7 @@ ${f}`)
     let s = this.rules.inline.delLDelim.exec(e);
     if (!s) return;
     if (!(s[1] || "") || !n || this.rules.inline.punctuation.exec(n)) {
-      let o = [...s[0]].length - 1,
+      let o = codePointLength(s[0]) - 1,
         i,
         l,
         p = o,
@@ -1342,7 +1379,7 @@ ${f}`)
       let k = u - d;
       for (h.lastIndex = 0; (s = h.exec(t)) !== null && !(s.index > k);) {
         if (
-          ((i = s[1] || s[2] || s[3] || s[4] || s[5] || s[6]), !i || ((l = [...i].length), l !== o))
+          ((i = s[1] || s[2] || s[3] || s[4] || s[5] || s[6]), !i || ((l = i.length), l !== o))
         )
           continue;
         if (s[3] || s[4]) {
@@ -1351,7 +1388,7 @@ ${f}`)
         }
         if (((p -= l), p > 0)) continue;
         l = Math.min(l, l + p);
-        let g = [...s[0]][0].length,
+        let g = firstCodePointLength(s[0]),
           b = e.slice(0, o + s.index + g + l),
           m = b.slice(o, -o);
         return { type: "del", raw: b, text: m, tokens: this.lexer.inlineTokens(m) };
