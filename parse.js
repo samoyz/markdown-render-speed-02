@@ -860,8 +860,10 @@ var _ = class {
         n = n.slice(p);
         let h = l.join(`
 `),
-          u = h
-            .replace(this.rules.other.blockquoteMarkerWhitespace, (g, b, m) => b + J(m, b.length))
+          u = (h.includes("\t")
+            ? h.replace(this.rules.other.blockquoteMarkerWhitespace, (g, b, m) => b + J(m, b.length))
+            : h
+          )
             .replace(
               this.rules.other.blockquoteSetextReplace,
               `
@@ -1520,12 +1522,8 @@ var O = class a {
     return new a(t).inlineTokens(e);
   }
   lex(e) {
-    ((e = e.replace(
-      T.carriageReturn,
-      `
-`,
-    )),
-      this.blockTokens(e, this.tokens));
+    e.includes("\r") && (e = e.replace(T.carriageReturn, "\n"));
+    this.blockTokens(e, this.tokens);
     for (let t = 0; t < this.inlineQueue.length; t++) {
       let n = this.inlineQueue[t];
       ((this.state.inRawBlock = !1), this.inlineTokens(n.src, n.tokens));
