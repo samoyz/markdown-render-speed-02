@@ -2016,7 +2016,10 @@ var O = class a {
       }
       if ((i = this.tokenizer.inlineText(l))) {
         ((e = e.substring(i.raw.length)),
-          i.raw.slice(-1) !== "_" && (r = i.raw.slice(-1)),
+          // r is the previous token's last character (a string, as
+          // emStrong/del use it); compare by code unit so the slice runs
+          // once, only when the character is not "_".
+          i.raw.charCodeAt(i.raw.length - 1) !== 95 && (r = i.raw.slice(-1)),
           (s = !0));
         let p = n.at(-1);
         p?.type === "text" ? ((p.raw += i.raw), (p.text += i.text)) : n.push(i);
