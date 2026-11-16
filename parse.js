@@ -532,18 +532,36 @@ function he(a) {
   }
   return a;
 }
+/**
+ * Split a table row into cells at unescaped "|" (an odd run of backslashes
+ * before it escapes it), drop a leading/trailing empty cell, pad or cut to
+ * `e` cells, and trim each cell, turning "\|" into "|": the same split the
+ * replace+split version computes, in one scan.
+ */
 function de(a, e) {
-  let t = a.replace(T.findPipe, (r, o, i) => {
-      let l = !1,
-        p = o;
-      for (; --p >= 0 && i[p] === "\\";) l = !l;
-      return l ? "|" : " |";
-    }),
-    n = t.split(T.splitPipe),
-    s = 0;
-  if ((n[0].trim() || n.shift(), n.length > 0 && !n.at(-1)?.trim() && n.pop(), e))
-    if (n.length > e) n.splice(e);
+  const n = [];
+  let start = 0,
+    bs = 0;
+  for (let i = 0; i < a.length; i++) {
+    const c = a.charCodeAt(i);
+    if (c === 92) {
+      bs++;
+      continue;
+    }
+    if (c === 124 && (bs & 1) === 0) {
+      n.push(a.slice(start, i));
+      start = i + 1;
+    }
+    bs = 0;
+  }
+  n.push(a.slice(start));
+  let s = 0;
+  if (!n[0].trim()) n.shift();
+  if (n.length > 0 && !n.at(-1).trim()) n.pop();
+  if (e) {
+    if (n.length > e) n.length = e;
     else for (; n.length < e;) n.push("");
+  }
   for (; s < n.length; s++) n[s] = n[s].trim().replace(T.slashPipe, "|");
   return n;
 }
