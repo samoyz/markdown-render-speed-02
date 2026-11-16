@@ -725,6 +725,39 @@ function lastCodePoint(s) {
   return s.charAt(s.length - 1);
 }
 
+/** First line of `s` (what s.split("\n", 1)[0] is), without the array. */
+function firstLine(s) {
+  const i = s.indexOf("\n");
+  return i < 0 ? s : s.slice(0, i);
+}
+
+/** Index of the first character of `s` that is not a space, or -1 when
+ * there is none (what s.search(/[^ ]/) is). */
+function firstNonSpace(s) {
+  for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) !== 32) return i;
+  return -1;
+}
+
+/**
+ * `s` with the tabs in its leading whitespace expanded (what
+ * s.replace(/^[ \t]+/, (v) => J(v, b)) does), or `s` itself when that
+ * whitespace holds no tab, which is the common case.
+ */
+function expandLeadingTabs(s, b) {
+  let k = 0,
+    hasTab = false;
+  while (k < s.length) {
+    const c = s.charCodeAt(k);
+    if (c === 32) k++;
+    else if (c === 9) {
+      hasTab = true;
+      k++;
+    } else break;
+  }
+  if (!hasTab) return s;
+  return s.replace(T.leadingSpaceTab, (v) => J(v, b));
+}
+
 /** First code unit of a string the GFM url tokenizer could match at: a
  * letter (mailto:, xmpp:, http://, www.) or an email local-part start. */
 function isUrlStartChar(c) {
@@ -943,20 +976,10 @@ ${y}`));
         if (!(t = l.exec(e)) || this.rules.block.hr.test(e)) break;
         let k = s();
         e = e.substring(t[0].length);
-        let g = t[2].split(
-            `
-`,
-            1,
-          )[0],
+        let g = firstLine(t[2]),
           b = t[1].length,
-          m = this.options.pedantic
-            ? J(g, b)
-            : g.replace(this.rules.other.leadingSpaceTab, (v) => J(v, b)),
-          f = e.split(
-            `
-`,
-            1,
-          )[0],
+          m = this.options.pedantic ? J(g, b) : expandLeadingTabs(g, b),
+          f = firstLine(e),
           y = !m.trim(),
           R = 0;
         if (
@@ -964,7 +987,7 @@ ${y}`));
             ? ((R = 2), (d = m.trimStart()))
             : y
               ? (R = b + 1)
-              : ((R = m.search(this.rules.other.nonSpaceChar)),
+              : ((R = firstNonSpace(m)),
                 (R = R > 4 ? 1 : R),
                 (d = m.slice(R)),
                 (R += b)),
@@ -980,30 +1003,47 @@ ${y}`));
             M = this.rules.other.htmlBeginRegex(R),
             ne = this.rules.other.blockquoteBeginRegex(R);
           for (; e;) {
-            let U = e.split(
-                `
-`,
-                1,
-              )[0],
-              Z;
+            let U = firstLine(e);
+            f = U;
+            let Z;
+            if (this.options.pedantic) {
+              f = f.replace(this.rules.other.listReplaceNesting, "  ");
+              Z = f;
+            } else {
+              Z = expandLeadingTabs(f, 0);
+            }
+            // The six block-start tests below all need the line's first
+            // non-space character (within R spaces) to be a fence, heading,
+            // html, blockquote, bullet or hr marker; any other start makes
+            // them all fail, so skip them.
+            let p0 = 0;
+            while (p0 < R && f.charCodeAt(p0) === 32) p0++;
+            const mc = f.charCodeAt(p0);
             if (
-              ((f = U),
-              this.options.pedantic
-                ? ((f = f.replace(this.rules.other.listReplaceNesting, "  ")), (Z = f))
-                : (Z = f.replace(this.rules.other.leadingSpaceTab, (me) => J(me))),
-              ee.test(f) || te.test(f) || M.test(f) || ne.test(f) || v.test(f) || Q.test(f))
+              (mc === 96 ||
+                mc === 126 ||
+                mc === 35 ||
+                mc === 60 ||
+                mc === 62 ||
+                mc === 42 ||
+                mc === 43 ||
+                mc === 45 ||
+                mc === 95 ||
+                (mc >= 48 && mc <= 57)) &&
+              (ee.test(f) || te.test(f) || M.test(f) || ne.test(f) || v.test(f) || Q.test(f))
             )
               break;
-            if (Z.search(this.rules.other.nonSpaceChar) >= R || !f.trim())
+            if (firstNonSpace(Z) >= R || !f.trim())
               d +=
                 `
 ` + Z.slice(R);
             else {
               if (
                 y ||
-                m
-                  .replace(this.rules.other.tabCharGlobal, "    ")
-                  .search(this.rules.other.nonSpaceChar) >= 4 ||
+                (m.includes("\t")
+                  ? m.replace(this.rules.other.tabCharGlobal, "    ")
+                  : m
+                ).search(this.rules.other.nonSpaceChar) >= 4 ||
                 ee.test(m) ||
                 te.test(m) ||
                 M.test(m) ||
